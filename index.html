@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TongueTie — Figma-style Multilingual App</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#050713;color:#f8f9ff;font-family:Inter,system-ui,-apple-system,sans-serif}
+.app{max-width:1180px;margin:auto;min-height:100vh;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.brand{font-size:30px;font-weight:850;background:linear-gradient(90deg,#fff,#55c7ff,#9b5cff);-webkit-background-clip:text;color:transparent}
+select,input,textarea{width:100%;background:#10172d;color:#fff;border:1px solid #293761;border-radius:14px;padding:13px;font:inherit}
+button{border:0;border-radius:14px;padding:13px 16px;background:linear-gradient(90deg,#287ba7,#6946b7);color:#fff;font-weight:750;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.hero{margin-top:20px;padding:28px;border:1px solid #293761;border-radius:28px;background:linear-gradient(135deg,#101a35,#17122f)}
+.hero h1{font-size:52px;margin:0 0 8px}.muted{color:#aab4d1}.card{background:#10172d;border:1px solid #293761;border-radius:20px;padding:20px}.screen{display:none;margin-top:20px}.screen.active{display:block}
+.nav{position:sticky;bottom:12px;margin-top:24px;background:#0b1125ee;border:1px solid #293761;border-radius:20px;padding:8px;display:flex;gap:7px;overflow:auto}
+.nav button{background:transparent;white-space:nowrap;padding:11px}.nav button.on{background:#1a2749}.pill{display:inline-block;background:#1b2748;border-radius:999px;padding:7px 10px;margin:4px;font-size:12px}
+.wave{height:100px;display:flex;align-items:center;justify-content:center;gap:5px}.bar{width:5px;height:20px;background:linear-gradient(#55c7ff,#9b5cff);border-radius:8px;animation:pulse .8s infinite ease-in-out}.bar:nth-child(2n){animation-delay:.1s}.bar:nth-child(3n){animation-delay:.2s}
+@keyframes pulse{50%{height:78px}}.record{width:100px;height:100px;border-radius:50%;font-size:32px;margin:12px}.chat{padding:15px;border-radius:18px;background:#171f3a;margin:8px 0}.you{background:#25204a}.result{font-size:24px;padding:18px;background:#0d1930;border-radius:18px;border:1px solid #293761}
+@media(max-width:800px){.app{padding:14px}.grid{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:40px}}
+</style></head>
+<body><div class="app">
+<div class="top"><div><div class="brand">TongueTie</div><div class="muted">Learn Languages. Speak Confidently. Understand the World.</div></div>
+<div style="width:210px"><select id="lang"><option>English</option><option>Urdu</option><option>Arabic</option><option>Persian (Farsi)</option><option>Spanish</option><option>French</option><option>German</option><option>Chinese</option><option>Japanese</option><option>Korean</option><option>Hindi</option><option>Turkish</option><option>Russian</option></select></div></div>
+
+<section id="home" class="screen active"><div class="hero"><h1>Learn Any Language.</h1><p class="muted">One AI language partner for vocabulary, grammar, speaking, translation and correction.</p>
+<span class="pill">100+ Languages</span><span class="pill">AI Tutor</span><span class="pill">Voice Translator</span><span class="pill">Female Voice</span><span class="pill">Error Correction</span></div>
+<div class="grid" style="margin-top:14px"><div class="card"><b>🎙️ Voice</b><p class="muted">Speak → translate → listen.</p><button onclick="go('voice')">Open</button></div><div class="card"><b>🤖 AI Tutor</b><p class="muted">Ask anything about a language.</p><button onclick="go('tutor')">Open</button></div><div class="card"><b>✍️ Correction</b><p class="muted">Find mistakes and learn why.</p><button onclick="go('correct')">Open</button></div><div class="card"><b>📚 Learn</b><p class="muted">Daily lessons and quizzes.</p><button onclick="go('learn')">Open</button></div></div></section>
+
+<section id="voice" class="screen"><div class="card"><h2>🎙️ Voice Translator</h2><div class="grid"><div><label>From</label><select><option>English</option><option>Urdu</option><option>Arabic</option><option>Spanish</option><option>French</option></select></div><div><label>To</label><select><option>Urdu</option><option>English</option><option>Arabic</option><option>Spanish</option><option>French</option></select></div><div><label>Voice</label><select id="gender"><option>Female</option><option>Male</option><option>Browser default</option></select></div><div><label>Mode</label><select><option>Translate + Correct</option><option>Translate only</option><option>Pronunciation practice</option></select></div></div>
+<div style="text-align:center"><div class="wave" id="wave"></div><button class="record" id="rec">🎙️</button><div id="timer" class="muted">Ready</div></div>
+<textarea id="voiceText" placeholder="Or type what you want to translate..."></textarea><br><button onclick="translateDemo()">Translate & Analyze</button>
+<div id="voiceOut" style="margin-top:15px"></div></div></section>
+
+<section id="tutor" class="screen"><div class="card"><h2>🤖 AI Tutor</h2><div class="chat">Hi! I'm your TongueTie AI tutor. Ask me about grammar, vocabulary, pronunciation or conversation.</div><div class="chat you">Explain the difference between learn and study.</div><div class="chat">Learn = gain knowledge or a skill. Study = spend time learning or preparing. I'll give you examples and a mini quiz.</div><textarea placeholder="Ask anything..."></textarea><br><button onclick="alert('Connect this screen to your Gemini backend for live answers.')">Ask Gemini</button></div></section>
+
+<section id="correct" class="screen"><div class="card"><h2>✍️ Correct My Sentence</h2><textarea id="bad" rows="5">I go to market yesterday and buyed some food.</textarea><br><button onclick="correctDemo()">Correct & Explain</button><div id="corr" style="margin-top:15px"></div></div></section>
+
+<section id="learn" class="screen"><div class="card"><h2>📚 Daily Learning</h2><div class="grid"><div><b>Vocabulary</b><p class="muted">10 new words</p></div><div><b>Grammar</b><p class="muted">Present tense</p></div><div><b>Speaking</b><p class="muted">Restaurant dialogue</p></div><div><b>Quiz</b><p class="muted">10 questions</p></div></div><br><button onclick="alert('Lesson started')">Start Lesson</button></div></section>
+
+<section id="vocab" class="screen"><div class="card"><h2>📖 Vocabulary</h2><input placeholder="Search a word..."><p class="result">opportunity</p><p class="muted">A chance or possibility to do something.</p><p>Synonyms: chance · possibility · opening</p><button>🔊 Listen</button> <button>＋ Add to My Words</button></div></section>
+
+<section id="grammar" class="screen"><div class="card"><h2>🧠 Grammar</h2><h3>Present Simple</h3><p class="muted">Use it for habits, facts and routines.</p><ul><li>He/She/It + verb + s</li><li>I/You/We/They + base verb</li><li>Negative: do/does + not + verb</li><li>Questions: Do/Does + subject + verb?</li></ul><button>Practice</button></div></section>
+
+<section id="progress" class="screen"><div class="card"><h2>📊 My Progress</h2><div class="grid"><div><b>48</b><p class="muted">Lessons</p></div><div><b>1,248</b><p class="muted">Words</p></div><div><b>12</b><p class="muted">Day streak</p></div><div><b>90%</b><p class="muted">Quiz average</p></div></div></div></section>
+
+<div class="nav">
+<button data-s="home" onclick="go('home')">⌂ Home</button><button data-s="learn" onclick="go('learn')">Learn</button>
+<button data-s="voice" onclick="go('voice')">🎙️ Voice</button><button data-s="tutor" onclick="go('tutor')">AI Tutor</button>
+<button data-s="correct" onclick="go('correct')">Correct</button><button data-s="vocab" onclick="go('vocab')">Words</button>
+<button data-s="grammar" onclick="go('grammar')">Grammar</button><button data-s="progress" onclick="go('progress')">Progress</button>
+</div></div>
+<script>
+const screens=[...document.querySelectorAll('.screen')];
+function go(id){screens.forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.s===id));scrollTo(0,0)}
+function bars(){let w=document.getElementById('wave');w.innerHTML='';for(let i=0;i<26;i++){let b=document.createElement('span');b.className='bar';b.style.animationDelay=(i*.035)+'s';w.appendChild(b)}}
+bars();
+let recorder, chunks=[], timerInt, seconds=0;
+document.getElementById('rec').onclick=async()=>{
+ const btn=document.getElementById('rec');
+ if(!recorder || recorder.state==='inactive'){
+   try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[]; recorder=new MediaRecorder(stream);
+    recorder.ondataavailable=e=>chunks.push(e.data);
+    recorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());document.getElementById('timer').textContent='Recording saved locally';};
+    recorder.start(); btn.textContent='⏹️'; seconds=0;
+    timerInt=setInterval(()=>{seconds++;document.getElementById('timer').textContent='00:'+String(seconds).padStart(2,'0')},1000);
+   }catch(e){alert('Microphone permission is required.');}
+ }else{
+   recorder.stop();btn.textContent='🎙️';clearInterval(timerInt);
+ }
+};
+function translateDemo(){
+ const t=document.getElementById('voiceText').value.trim();
+ if(!t){alert('Type a sentence or record your voice first.');return}
+ document.getElementById('voiceOut').innerHTML='<div class="result">تم کیسے ہو؟</div><p class="muted">Demo translation. Connect Gemini + STT for live multilingual translation.</p><button onclick="speak()">🔊 Speak with preferred voice</button><div class="card"><b>Correction</b><p>We can check grammar, spelling, fluency and naturalness before translating.</p></div>';
+}
+function speak(){
+ const text=document.querySelector('#voiceOut .result')?.textContent||'';
+ if(!('speechSynthesis' in window)){alert('Browser speech synthesis is not available.');return}
+ const u=new SpeechSynthesisUtterance(text);u.lang='ur-PK';
+ const voices=speechSynthesis.getVoices();
+ const female=voices.find(v=>/female|woman|zira|samantha|susan|aria|google.*female/i.test(v.name+' '+v.voiceURI));
+ if(document.getElementById('gender').value==='Female'&&female)u.voice=female;
+ speechSynthesis.speak(u);
+}
+function correctDemo(){
+ const x=document.getElementById('bad').value;
+ document.getElementById('corr').innerHTML='<div class="result">I went to the market yesterday and bought some food.</div><p class="muted"><b>Why:</b> “Yesterday” requires past tense: go → went, buy → bought. “the market” is the natural phrase here.</p>';
+}
+</script></body></html>

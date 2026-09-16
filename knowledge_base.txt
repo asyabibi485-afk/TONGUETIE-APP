@@ -1,0 +1,14 @@
+
+TongueTie learning principles
+
+Vocabulary: Teach meaning in context, part of speech, pronunciation, examples, related words and spaced review.
+
+Grammar: Explain rules simply, show affirmative/negative/question forms, then provide controlled and free practice.
+
+Speaking: A production system should transcribe speech, compare it with the expected phrase, identify pronunciation/fluency issues, and provide actionable feedback.
+
+Translation: Preserve meaning, register, cultural context and ambiguity. For languages with multiple scripts or dialects, explain the selected variety.
+
+Pronunciation: Use the target language's own phonology. Do not invent an audio result. Pronunciation scores require an actual speech assessment service.
+
+Safety: Language learning is educational. Do not treat translation or AI explanations as professional legal, medical or financial advice.
