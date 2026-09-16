@@ -1,35 +1,15 @@
-# TongueTie — Streamlit ImportError Fix
+# TongueTie deployment
 
-The screenshot showed an `ImportError` at:
+1. Put these files directly in the GitHub repository root:
+   - `app.py`
+   - `gemini_service.py`
+   - `speech_service.py`
+   - `language_data.py`
+   - `rag.py`
+   - `requirements.txt`
+   - `data/knowledge_base.txt`
+2. In Streamlit Cloud, choose `app.py` as the main file.
+3. Add the values from `.streamlit/secrets.toml.example` to Streamlit Secrets.
+4. Reboot the app after pushing the new files.
 
-`from gemini_service import (...)`
-
-This build removes the top-level dependency. `gemini_service` is loaded only when
-an AI feature is used. `google-genai` is also imported only when a Gemini request
-is made.
-
-## IMPORTANT
-Upload the **contents** of this ZIP to the root of your GitHub repository.
-
-The repository root must contain:
-
-- `app.py`
-- `gemini_service.py`
-- `rag.py`
-- `language_data.py`
-- `speech_service.py`
-- `requirements.txt`
-- `data/knowledge_base.txt`
-
-In Streamlit Cloud:
-- Main file path: `app.py`
-- Reboot the app after pushing.
-
-Secrets:
-```toml
-GEMINI_API_KEY = "your-real-key"
-GEMINI_MODEL = "your-enabled-gemini-model"
-TONGUETIE_ADMIN_PASSWORD = "your-admin-password"
-```
-
-Do not put the real API key in GitHub.
+Do not upload the ZIP as a nested directory. The modules must be beside `app.py`.
