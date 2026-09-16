@@ -40,6 +40,7 @@ def lesson_plan(*args, **kwargs):
     return _load_gemini()[5](*args, **kwargs)
 from language_data import LANGUAGES, language_options
 from rag import retrieve_context
+from speech_service import transcribe_audio, render_browser_tts
 
 st.set_page_config(page_title="TongueTie", page_icon="🌍", layout="wide", initial_sidebar_state="expanded")
 
@@ -149,19 +150,36 @@ elif page == "Voice Translator":
     if st.button("Translate & Analyze", type="primary"):
         text = typed.strip()
         if not text and audio:
-            st.warning("The recording is captured, but Streamlit does not natively transcribe audio. Connect a speech-to-text provider in `speech_service.py`.")
-        elif text:
-            with st.spinner("Translating and checking..."):
-                result = translate_text(text, source, target)
-                correction = correct_text(text, source)
-            st.markdown("### Translation")
-            st.markdown(result)
-            st.markdown("### Error correction")
-            st.markdown(correction)
-            st.session_state.history.insert(0, {"source":text,"from":source,"to":target,"result":result})
+            try:
+                source_code = source.split("(")[-1].rstrip(")")
+                with st.spinner("Listening and analyzing your speech..."):
+                    text = transcribe_audio(audio.getvalue(), source_code)
+                if not text:
+                    st.error("No speech was detected. Please record again, speaking clearly.")
+            except Exception as exc:
+                st.error(f"Speech-to-text error: {exc}")
+        if text:
+            try:
+                with st.spinner("Translating and checking..."):
+                    result = translate_text(text, source, target)
+                    correction = correct_text(text, source)
+                st.markdown("### 📝 Speech transcript")
+                st.info(text)
+                st.markdown("### 🌐 Translation")
+                st.markdown(result)
+                st.markdown("### ✍️ Error correction")
+                st.markdown(correction)
+                st.session_state.history.insert(0, {"source":text,"from":source,"to":target,"result":result})
+                st.session_state.last_translation = result
+            except Exception as exc:
+                st.error(f"AI analysis error: {exc}")
     st.divider()
     st.markdown("### 🔊 Voice playback")
-    st.info("The standalone prototype includes browser speech synthesis with a female-voice preference. For production, connect Google Cloud TTS, Azure Speech, ElevenLabs, or another TTS provider.")
+    if st.session_state.get("last_translation"):
+        target_code = target.split("(")[-1].rstrip(")")
+        render_browser_tts(st.session_state.last_translation, target_code, voice_gender)
+    else:
+        st.caption("Translate text or speech first; the playback controls will appear here.")
 
 elif page == "AI Tutor":
     st.title("🤖 AI Tutor")
@@ -187,7 +205,10 @@ elif page == "Vocabulary":
     if st.button("Analyze word", type="primary") and word.strip():
         with st.spinner("Analyzing..."):
             out = explain_word(word, source, target)
-        st.markdown(out)
+        if str(out).startswith("AI service error:"):
+            st.error(out)
+        else:
+            st.markdown(out)
         if st.button("➕ Add to My Words"):
             st.session_state.words.append(word)
     if st.session_state.words:

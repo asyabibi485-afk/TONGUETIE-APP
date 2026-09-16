@@ -33,11 +33,49 @@ def _model():
     return _setting("GEMINI_MODEL", "gemini-2.5-flash")
 
 def ask(prompt):
+    """Send a Gemini request without reusing a client across Streamlit reruns."""
+    key = _setting("GEMINI_API_KEY")
+    if not key:
+        return "AI service error: GEMINI_API_KEY is not configured in Streamlit Secrets."
+
     try:
-        response = _client().models.generate_content(model=_model(), contents=prompt)
-        return getattr(response, "text", None) or str(response)
+        from google import genai
+    except ImportError:
+        return "AI service error: google-genai is missing. Reboot Streamlit after deploying requirements.txt."
+
+    client = None
+    try:
+        client = genai.Client(api_key=key)
+        response = client.models.generate_content(
+            model=_model(),
+            contents=prompt,
+        )
+        result = getattr(response, "text", None)
+        return result.strip() if result else str(response)
     except Exception as e:
-        return f"AI service error: {e}"
+        msg = str(e)
+        # A stale/closed SDK client must not be surfaced as the normal user error.
+        # Retry once with a completely new client.
+        if "client has been closed" in msg.lower() or "closed" in msg.lower():
+            try:
+                fresh = genai.Client(api_key=key)
+                response = fresh.models.generate_content(model=_model(), contents=prompt)
+                result = getattr(response, "text", None)
+                return result.strip() if result else str(response)
+            except Exception as retry_error:
+                return f"AI service error: {retry_error}"
+            finally:
+                try:
+                    fresh.close()
+                except Exception:
+                    pass
+        return f"AI service error: {msg}"
+    finally:
+        try:
+            if client is not None:
+                client.close()
+        except Exception:
+            pass
 
 def ai_tutor(question, source, target, context=""):
     return ask(f"""You are TongueTie, a multilingual language tutor.

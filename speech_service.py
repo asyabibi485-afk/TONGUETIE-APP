@@ -23,7 +23,7 @@ def _setting(name, default=None):
     return default
 
 def transcribe_audio(audio_bytes, language_code):
-    """Transcribe WAV bytes using Gemini's dedicated transcription model."""
+    """Transcribe Streamlit WAV audio with Gemini 3.5 Transcribe."""
     if not audio_bytes:
         return ""
 
@@ -31,39 +31,56 @@ def transcribe_audio(audio_bytes, language_code):
         from google import genai
     except ImportError as exc:
         raise RuntimeError(
-            "google-genai is not installed. Reboot Streamlit after deploying "
-            "the updated requirements.txt."
+            "google-genai is not installed. Reboot Streamlit after deploying requirements.txt."
         ) from exc
 
     api_key = _setting("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY is not configured in Streamlit Secrets."
-        )
+        raise RuntimeError("GEMINI_API_KEY is not configured in Streamlit Secrets.")
 
     model = _setting("GEMINI_TRANSCRIBE_MODEL", "gemini-3.5-transcribe")
-    client = genai.Client(api_key=api_key)
+    language_code = (language_code or "").strip()
 
-    # Gemini Files API accepts a filesystem path, so save the Streamlit
-    # UploadedFile bytes to a temporary WAV first.
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+    # Streamlit st.audio_input records WAV audio. Gemini's Files API accepts a
+    # filesystem path, so persist the bytes briefly and upload that exact file.
+    suffix = ".wav"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(audio_bytes)
         path = tmp.name
 
     try:
-        audio_file = client.files.upload(file=path)
-        interaction = client.interactions.create(
-            model=model,
-            input=[{
-                "type": "audio",
-                "uri": audio_file.uri,
-                "mime_type": audio_file.mime_type or "audio/wav",
-            }],
-        )
-        text = getattr(interaction, "output_text", None)
-        if not text:
-            text = str(interaction)
-        return text.strip()
+        # Fresh client: do not reuse a client across Streamlit reruns.
+        with genai.Client(api_key=api_key) as client:
+            audio_file = client.files.upload(file=path)
+            kwargs = {
+                "model": model,
+                "input": [{
+                    "type": "audio",
+                    "uri": audio_file.uri,
+                    "mime_type": audio_file.mime_type or "audio/wav",
+                }],
+            }
+            # Supplying the known language improves recognition. If the code is
+            # not a standard BCP-47 code, let Gemini auto-detect instead.
+            if language_code and len(language_code) <= 15 and "_" not in language_code:
+                kwargs["generation_config"] = {
+                    "transcription_config": {
+                        "language_codes": [language_code]
+                    }
+                }
+            interaction = client.interactions.create(**kwargs)
+            text = getattr(interaction, "output_text", None)
+            if not text:
+                raise RuntimeError(f"Gemini returned no transcript: {interaction}")
+            return text.strip()
+    except Exception as exc:
+        msg = str(exc)
+        if "client has been closed" in msg.lower():
+            raise RuntimeError(
+                "Gemini client was closed before transcription. "
+                "The app now creates a fresh client for each recording. Reboot Streamlit."
+            ) from exc
+        raise RuntimeError(f"Speech analysis failed: {msg}") from exc
     finally:
         try:
             Path(path).unlink(missing_ok=True)
