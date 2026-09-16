@@ -25,7 +25,7 @@ LANGUAGES = [
 ("Frisian","fy"),("Maltese","mt"),("Luxembourgish","lb"),("Breton","br"),
 ("Corsican","co"),("Hawaiian","haw"),("Māori","mi"),("Samoan","sm"),("Tongan","to"),
 ("Fijian","fj"),("Javanese","jv"),("Sundanese","su"),("Balinese","ban"),
-("Tagalog","tl"),("Aramaic","arc"),("Yiddish","yi"),("Albanian","sq"),
+("Tagalog","tl"),("Aramaic","arc"),("Yiddish","yi"),
 ("Quechua","qu"),("Guarani","gn"),("Nahuatl","nah"),("Aymara","ay"),
 ("Greenlandic","kl"),("Faroese","fo"),("Tatar","tt"),("Bashkir","ba"),
 ("Chechen","ce"),("Ossetian","os"),("Uyghur","ug"),("Tibetan","bo"),
@@ -38,3 +38,7 @@ LANGUAGES = [
 
 def language_options():
     return [f"{name} ({code})" for name, code in LANGUAGES]
+
+
+# A short curated list used for the "Quick languages" chips in the sidebar.
+POPULAR = ["English", "Urdu", "Arabic", "Spanish", "French", "German", "Chinese (Mandarin)", "Hindi"]
