@@ -3,24 +3,25 @@ from __future__ import annotations
 import os
 import streamlit as st
 
-from language_data import LANGUAGES, language_options, POPULAR
+from language_data import LANGUAGES, language_options, POPULAR, PROFICIENCY_LEVELS
 from rag import retrieve_context
 from gemini_service import (
     ai_tutor,
     translate_text,
+    translate_fast,
     correct_text,
     explain_word,
     generate_quiz,
     lesson_plan,
 )
-from speech_service import transcribe_audio, render_browser_tts, render_live_recognition
+from speech_service import transcribe_audio, render_browser_tts
 
 
 st.set_page_config(
     page_title="TongueTie — AI Language Studio",
     page_icon="🌍",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ==================================================================================
@@ -50,10 +51,29 @@ footer{visibility:hidden}
 #MainMenu{visibility:hidden}
 
 /* ---------- Sidebar = the "side tab" panel: languages, quick-picks, switches ---------- */
-section[data-testid="stSidebar"]{
-  background:linear-gradient(180deg,#0a1022 0%,#080c19 100%);
-  border-right:1px solid var(--line);
-}
+section[data-testid="stSidebar"]{display:none!important}
+.front-controls{padding:16px;border:1px solid var(--line);border-radius:22px;background:rgba(16,23,43,.78);backdrop-filter:blur(16px);margin-bottom:14px}
+.control-label{font-size:11px;font-weight:800;color:#8fa0c8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.nav-caption{font-size:12px;color:#8fa0c8;margin:0 0 7px 2px}
+.voice-title{font-size:28px;font-weight:900;letter-spacing:-1px;margin-bottom:4px}
+.voice-sub{color:#9eacd0;font-size:13px;margin-bottom:14px}
+
+
+/* ---------- Voice Studio: single, unified "plugin" style voice-recognition panel ---------- */
+.voice-studio{position:relative;border:1px solid #3d6ea8;border-radius:26px 26px 0 0;border-bottom:none;padding:6px 18px 4px;margin:8px 0 0;
+  background:linear-gradient(160deg,rgba(20,45,70,.55),rgba(56,32,96,.42));box-shadow:0 18px 46px rgba(0,0,0,.28)}
+.voice-studio-head{display:flex;align-items:center;gap:8px;padding:12px 2px 0}
+.vs-dot{width:9px;height:9px;border-radius:50%;background:#51e6ad;box-shadow:0 0 10px #51e6ad;animation:pulse 2.2s ease-in-out infinite}
+.vs-name{font-weight:800;font-size:13.5px;letter-spacing:.2px}
+.vs-tag{margin-left:auto;font-size:10.5px;font-weight:700;color:#bcd2ff;background:rgba(85,199,255,.14);
+  border:1px solid rgba(125,226,255,.3);padding:3px 9px;border-radius:999px}
+/* The recorder below is a separate Streamlit block; these rules make it read as
+   one continuous panel with .voice-studio rather than actually nesting it. */
+.voice-studio + div[data-testid="stAudioInput"]{
+  border:1px solid #3d6ea8;border-top:none;border-radius:0 0 26px 26px;
+  background:linear-gradient(160deg,rgba(20,45,70,.4),rgba(56,32,96,.32));
+  margin-top:-2px;margin-bottom:14px;padding:14px}
+
 .sidebar-brand{padding:6px 2px 14px;display:flex;align-items:center;gap:10px}
 .sidebar-brand .logo-ring{position:relative;width:38px;height:38px;flex:0 0 38px}
 .sidebar-brand .logo-ring .ring{position:absolute;inset:0;border-radius:50%;
@@ -81,6 +101,30 @@ section[data-testid="stSidebar"]{
 .brand .gtext{background:linear-gradient(90deg,var(--cyan),#fff,var(--pink));-webkit-background-clip:text;color:transparent}
 .badge{padding:7px 12px;border:1px solid #35507f;background:#121d39;border-radius:999px;color:#cdd9ff;font-size:12px;font-weight:600}
 .badge.live{border-color:#2c8f6c;color:#7cf0c0}
+
+/* ---------- Modern floating "dock" for the primary nav row + "More tools" select ----------
+   .nav-dock is an empty marker div; the following two Streamlit blocks (the
+   5-button row, then the selectbox) are its DOM siblings, styled via
+   adjacent-sibling selectors — no custom classes on Streamlit's own
+   containers needed, so this stays robust across Streamlit versions. */
+.nav-dock{height:8px;margin:0 0 -4px;border-radius:20px 20px 0 0;border:1px solid #2c3d68;border-bottom:none;
+  background:linear-gradient(135deg,rgba(13,19,38,.85),rgba(18,14,34,.85))}
+.nav-dock + div[data-testid="stHorizontalBlock"]{
+  border:1px solid #2c3d68;border-bottom:none;border-radius:0;padding:6px 8px 2px;
+  background:linear-gradient(135deg,rgba(13,19,38,.85),rgba(18,14,34,.85));backdrop-filter:blur(18px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.nav-dock + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button{
+  border:1px solid transparent;border-radius:14px;min-height:38px;font-size:13px;
+  background:transparent;color:#aab9e6;font-weight:700;box-shadow:none}
+.nav-dock + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button:hover{
+  background:rgba(85,199,255,.10);color:#fff;transform:none;border-color:rgba(125,226,255,.35)}
+.nav-dock + div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button[kind="primary"]{
+  background:linear-gradient(90deg,var(--cyan),var(--violet));color:#0a0e1c;border-color:transparent;
+  box-shadow:0 8px 22px rgba(122,90,255,.4)}
+.nav-dock + div[data-testid="stHorizontalBlock"] + div[data-testid="stSelectbox"]{
+  border:1px solid #2c3d68;border-top:none;border-radius:0 0 20px 20px;
+  background:linear-gradient(135deg,rgba(13,19,38,.85),rgba(18,14,34,.85));
+  padding:8px 10px 12px;margin-bottom:14px;box-shadow:0 18px 40px rgba(0,0,0,.28)}
 
 div[data-testid="stButton"] button{
   border:1px solid #42619b;border-radius:14px;min-height:42px;
@@ -178,7 +222,8 @@ def show_ai_result(result: str):
 defaults = {
     "history": [], "words": [], "lessons": 0, "quiz_score": 0,
     "page": "Home",
-    "autoplay": False, "prefer_female": True, "live_preview": True,
+    "autoplay": False, "prefer_female": True,
+    "proficiency": PROFICIENCY_LEVELS[1],
 }
 for key, default in defaults.items():
     if key not in st.session_state:
@@ -190,67 +235,29 @@ PAGES = [
     ("Quiz & Tests", "🧪"), ("Progress", "📊"), ("Profile", "👤"), ("Admin", "⚙️"),
 ]
 
-# ---------------- Sidebar: the "side tab" panel (languages, quick chips, switches) ----------------
-with st.sidebar:
-    st.markdown(
-        f'<div class="sidebar-brand"><div class="logo-ring"><div class="ring"></div>'
-        f'<div class="dot">{MIC_SVG}</div></div>'
-        f'<div><strong>Tongue<span style="color:#9b5cff">Tie</span></strong>'
-        f'<small>AI Language Studio<br>Learn • Speak • Understand</small></div></div>',
-        unsafe_allow_html=True,
+# ---------------- Front controls: no sidebar ----------------
+def _swap_languages():
+    opts = language_options()
+    st.session_state.source_lang, st.session_state.target_lang = (
+        st.session_state.get("target_lang", opts[1]),
+        st.session_state.get("source_lang", opts[0]),
     )
 
-    def _swap_languages():
-        opts = language_options()
-        st.session_state.source_lang, st.session_state.target_lang = (
-            st.session_state.get("target_lang", opts[1]),
-            st.session_state.get("source_lang", opts[0]),
-        )
+source = st.session_state.get("source_lang", language_options()[0])
+target = st.session_state.get("target_lang", language_options()[1])
 
-    st.markdown("**I speak**")
-    source = st.selectbox("I speak", language_options(), index=0, label_visibility="collapsed", key="source_lang")
-    swap_col1, swap_col2 = st.columns([1, 1])
-    with swap_col1:
-        st.markdown("**I'm learning**")
-    with swap_col2:
-        st.button("⇄ Swap", use_container_width=True, key="swap_btn", on_click=_swap_languages)
-    target = st.selectbox("I'm learning", language_options(), index=1, label_visibility="collapsed", key="target_lang")
-
-    st.markdown(f'<span class="badge">{len(LANGUAGES)} languages available</span>', unsafe_allow_html=True)
-
-    st.markdown("###### ✥ Quick languages")
-    st.caption("Drag to reorder — saved on this device.")
-    quick_chips_html = "".join(f'<div class="chip" draggable="true">{n}</div>' for n in POPULAR)
-    quick_chips_markup = f"""
-    <div id="chipbox" class="chip-row">{quick_chips_html}</div>
-    <script>
-    const box = document.getElementById('chipbox');
-    let dragEl = null;
-    [...box.children].forEach(chip => {{
-      chip.addEventListener('dragstart', () => {{ dragEl = chip; chip.classList.add('dragging'); }});
-      chip.addEventListener('dragend', () => {{ chip.classList.remove('dragging'); }});
-    }});
-    box.addEventListener('dragover', e => {{
-      e.preventDefault();
-      const after = [...box.children].find(c => {{
-        const r = c.getBoundingClientRect();
-        return e.clientY <= r.top + r.height/2;
-      }});
-      if (dragEl && after && after !== dragEl) box.insertBefore(dragEl, after);
-      else if (dragEl && !after) box.appendChild(dragEl);
-    }});
-    </script>
-    """
-    from streamlit.components.v1 import html as _sb_html
-    _sb_html(quick_chips_markup, height=76, scrolling=False)
-
-    with st.expander("⚙️ Settings", expanded=False):
-        st.session_state.autoplay = st.toggle("Auto-play translation audio", value=st.session_state.autoplay)
-        st.session_state.prefer_female = st.toggle("Prefer female voice", value=st.session_state.prefer_female)
-        st.session_state.live_preview = st.toggle("Live browser recognition preview", value=st.session_state.live_preview)
-
-    st.divider()
-    st.caption("Secrets required: `GEMINI_API_KEY` in `.streamlit/secrets.toml` (see README).")
+st.markdown('<div class="front-controls">', unsafe_allow_html=True)
+left, swap, right = st.columns([5,1,5])
+with left:
+    st.markdown('<div class="control-label">I speak</div>', unsafe_allow_html=True)
+    source = st.selectbox("Source", language_options(), index=language_options().index(source) if source in language_options() else 0, label_visibility="collapsed", key="source_lang")
+with swap:
+    st.markdown('<div style="height:23px"></div>', unsafe_allow_html=True)
+    st.button("⇄", use_container_width=True, key="swap_btn", on_click=_swap_languages)
+with right:
+    st.markdown('<div class="control-label">I am learning</div>', unsafe_allow_html=True)
+    target = st.selectbox("Target", language_options(), index=language_options().index(target) if target in language_options() else 1, label_visibility="collapsed", key="target_lang")
+st.markdown(f'<div style="margin-top:8px"><span class="badge">🌍 {len(LANGUAGES)} languages</span> <span class="badge live">● AI ready</span></div></div>', unsafe_allow_html=True)
 
 # ---------------- Top brand bar ----------------
 st.markdown(
@@ -263,19 +270,23 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------- Primary navigation: an always-visible pill tab-bar (the "side tab", front and center) ----------------
-st.markdown('<div class="tabbar-wrap"></div>', unsafe_allow_html=True)
-row1 = PAGES[:6]
-row2 = PAGES[6:]
-for row in (row1, row2):
-    cols = st.columns(len(row))
-    for col, (name, icon) in zip(cols, row):
-        with col:
-            if st.button(f"{icon} {name}", key=f"nav_{name}", use_container_width=True,
-                         type="primary" if st.session_state.page == name else "secondary"):
-                st.session_state.page = name
-                st.rerun()
-
+# ---------------- Primary navigation: clean front tabs ----------------
+st.markdown('<div class="nav-dock"></div>', unsafe_allow_html=True)
+primary = [("Home","🏠"),("Learn","📚"),("Voice Translator","🎙️"),("AI Tutor","🤖"),("Correct My English","✍️")]
+cols = st.columns(5)
+for col, (name, icon) in zip(cols, primary):
+    with col:
+        if st.button(f"{icon} {name if name != 'Correct My English' else 'Practice'}", key=f"nav_{name}", use_container_width=True, type="primary" if st.session_state.page == name else "secondary"):
+            st.session_state.page = name
+            st.rerun()
+more = [x for x in PAGES if x[0] not in {n for n,_ in primary}]
+more_names = [f"{i} {n}" for n,i in more]
+selected_more = st.selectbox("More tools", ["More…"] + more_names, label_visibility="collapsed", key="more_nav")
+if selected_more != "More…":
+    chosen = selected_more.split(" ",1)[1]
+    if st.session_state.page != chosen:
+        st.session_state.page = chosen
+        st.rerun()
 page = st.session_state.page
 
 # ---------------- Pages ----------------
@@ -284,8 +295,8 @@ if page == "Home":
         '<div class="hero"><h1>Speak beyond<br><span class="gradient">language barriers.</span></h1>'
         '<p>Learn languages with an AI tutor, real speech recognition, instant translation, smart correction, '
         'vocabulary practice and guided lessons — all in one fast, creative workspace.</p>'
-        '<div class="pillrow"><span class="pill">130+ Languages</span><span class="pill">AI Tutor</span>'
-        '<span class="pill">Live Voice Recognition</span><span class="pill">Grammar Coach</span>'
+        '<div class="pillrow"><span class="pill">250+ Languages</span><span class="pill">AI Tutor</span>'
+        '<span class="pill">AI Voice Recognition</span><span class="pill">Grammar Coach</span>'
         '<span class="pill">Personal Progress</span></div></div>',
         unsafe_allow_html=True,
     )
@@ -305,85 +316,106 @@ if page == "Home":
 
 elif page == "Learn":
     st.title("📚 Learning Studio")
-    st.caption(f"Learning {name_of(target)} through {name_of(source)}")
-    left, right = st.columns([1, 1])
-    with left:
-        level = st.selectbox("Level", ["Beginner", "Elementary", "Intermediate", "Upper Intermediate", "Advanced"])
-        topic = st.text_input("Daily-life topic", "Introducing yourself")
-        if st.button("✨ Generate lesson", type="primary", use_container_width=True):
-            with st.spinner("Building your lesson..."):
-                result = lesson_plan(source, target, level, topic)
-            show_ai_result(result)
-            if not str(result).startswith("AI service error:"):
-                st.session_state.lessons += 1
-    with right:
-        feature("Learning path", "🧭", "Daily conversation → Vocabulary → Grammar → Pronunciation → Listening → Speaking → Review")
+    st.caption(f"Learning {name_of(target)} through {name_of(source)} · Level: {st.session_state.proficiency}")
+
+    tab_lesson, tab_vocab, tab_grammar = st.tabs(["📘 Lesson Generator", "📖 Quick Vocabulary", "🧠 Grammar Tip"])
+
+    with tab_lesson:
+        left, right = st.columns([1, 1])
+        with left:
+            level = st.selectbox(
+                "Level", PROFICIENCY_LEVELS,
+                index=PROFICIENCY_LEVELS.index(st.session_state.proficiency),
+            )
+            topic = st.text_input("Daily-life topic", "Introducing yourself")
+            if st.button("✨ Generate lesson", type="primary", use_container_width=True):
+                with st.spinner("Building your lesson..."):
+                    result = lesson_plan(source, target, level, topic)
+                show_ai_result(result)
+                if not str(result).startswith("AI service error:"):
+                    st.session_state.lessons += 1
+        with right:
+            feature("Learning path", "🧭", "Daily conversation → Vocabulary → Grammar → Pronunciation → Listening → Speaking → Review")
+
+    with tab_vocab:
+        word = st.text_input("Word or phrase to learn right now", key="learn_vocab_word")
+        if st.button("Explain word", key="learn_vocab_btn") and word.strip():
+            with st.spinner("Building your word card..."):
+                show_ai_result(explain_word(word, source, target))
+
+    with tab_grammar:
+        topic2 = st.text_input("Grammar topic", "Present simple tense", key="learn_grammar_topic")
+        if st.button("Quick grammar tip", key="learn_grammar_btn"):
+            with st.spinner("Preparing a quick tip..."):
+                show_ai_result(ai_tutor(
+                    f"Give one short, high-value tip about {topic2}, with one example.",
+                    source, target, level=st.session_state.proficiency,
+                ))
 
 elif page == "Voice Translator":
-    st.title("🎙️ Voice Translator")
-    st.caption("Speak → live transcript → translation → correction → playback")
-
+    st.markdown('<div class="voice-title">🎙️ Voice Translator</div><div class="voice-sub">Speak clearly. See words instantly. Get a fast, accurate answer.</div>', unsafe_allow_html=True)
     a, b = st.columns(2)
-    with a:
-        st.markdown(f'<div class="card"><h3>🎤 Speak in</h3><p>{name_of(source)}</p></div>', unsafe_allow_html=True)
-    with b:
-        st.markdown(f'<div class="card"><h3>🌐 Translate to</h3><p>{name_of(target)}</p></div>', unsafe_allow_html=True)
+    with a: st.markdown(f'<div class="card"><b>🎤 From</b><div style="font-size:18px;margin-top:5px">{name_of(source)}</div></div>', unsafe_allow_html=True)
+    with b: st.markdown(f'<div class="card"><b>🌐 To</b><div style="font-size:18px;margin-top:5px">{name_of(target)}</div></div>', unsafe_allow_html=True)
 
     sw1, sw2 = st.columns(2)
-    with sw1:
-        voice_female = st.toggle("🔊 Female voice", value=st.session_state.prefer_female, key="vt_female")
-    with sw2:
-        show_live = st.toggle("⚡ Live browser preview", value=st.session_state.live_preview, key="vt_live")
+    with sw1: voice_female = st.toggle("🔊 Female voice", value=st.session_state.prefer_female, key="vt_female")
+    with sw2: fast_mode = st.toggle("🚀 Fast answer", value=True, key="vt_fast",
+                                     help="On: one quick translation. Off: adds a grammar-correction pass.")
 
+    # ---- Single, unified voice-recognition panel (Gemini 3.5 Transcribe) ----
     st.markdown(
+        f'<div class="voice-studio">'
+        f'<div class="voice-studio-head">'
+        f'<span class="vs-dot"></span><span class="vs-name">AI Voice Recognition</span>'
+        f'<span class="vs-tag">Gemini 3.5 Transcribe</span></div>'
         f'<div class="mic-stage"><div class="mic-orb"><div class="r1"></div><div class="r2"></div>'
         f'<div class="core">{MIC_SVG}</div></div>'
-        f'<div class="mic-caption">Real microphone input — tap below to record</div></div>',
+        f'<div class="mic-caption">One tap, real microphone, studio-grade transcription</div></div>'
+        f'</div>',
         unsafe_allow_html=True,
     )
+    audio = st.audio_input("🎤 Record voice for AI analysis", label_visibility="collapsed")
 
-    if show_live:
-        render_live_recognition(code_of(source), height=300)
-        st.caption("This live preview runs in your browser for an instant look at what's being heard. Use **Copy text** and paste it below, or record with the button beneath for AI transcription + translation.")
+    typed = st.text_area("Text", placeholder="…or type your sentence here", height=90, label_visibility="collapsed")
 
-    audio = st.audio_input("🎤 Tap to record for AI transcription")
-    typed = st.text_area("Or type a sentence", placeholder="Say or type something to translate...")
-
-    if st.button("🚀 Analyze & Translate", type="primary", use_container_width=True):
+    if st.button("⚡ Get Fast Answer", type="primary", use_container_width=True):
         text = typed.strip()
         if not text and audio:
-            with st.spinner("Listening to your recording..."):
+            with st.spinner("Transcribing with Gemini…"):
                 try:
-                    text = transcribe_audio(audio.getvalue(), code_of(source))
+                    text = transcribe_audio(audio.getvalue(), code_of(source), mime_type=audio.type or "audio/wav")
                 except Exception as exc:
                     st.error(f"AI service error: {exc}")
-                    text = ""
         if not text:
-            st.warning("No speech detected. Please record again or type your sentence.")
+            st.warning("Speak or type something first.")
         else:
-            with st.spinner("AI is translating and checking your speech..."):
-                translation = translate_text(text, source, target)
-                correction = correct_text(text, source)
-            st.markdown('<div class="section-title">Analysis</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="tt-result"><b>📝 Transcript</b><br>{text}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="tt-result"><b>🌐 Translation</b><br>{translation}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="tt-result success"><b>✍️ Correction</b><br>{correction}</div>', unsafe_allow_html=True)
+            with st.spinner("Generating answer…"):
+                if fast_mode:
+                    translation = translate_fast(text, source, target)
+                    correction = None
+                else:
+                    translation = translate_text(text, source, target)
+                    correction = correct_text(text, source)
+            st.markdown('<div class="section-title">Your answer</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="tt-result"><b>📝 You said</b><br>{text}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="tt-result success"><b>⚡ Answer</b><br>{translation}</div>', unsafe_allow_html=True)
+            if correction is not None:
+                st.markdown(f'<div class="tt-result"><b>✍️ Correction</b><br>{correction}</div>', unsafe_allow_html=True)
             if not str(translation).startswith("AI service error:"):
                 st.session_state.history.insert(0, {"source": text, "from": name_of(source), "to": name_of(target), "result": translation})
                 st.session_state.last_translation = translation
-
     if st.session_state.get("last_translation"):
         st.markdown('<div class="section-title">🔊 Listen</div>', unsafe_allow_html=True)
-        gender = "Female" if voice_female else "Male"
-        render_browser_tts(st.session_state.last_translation, code_of(target), gender)
+        render_browser_tts(st.session_state.last_translation, code_of(target), "Female" if voice_female else "Male")
 
 elif page == "AI Tutor":
     st.title("🤖 AI Tutor")
-    st.caption("Ask naturally. Get examples. Practice immediately.")
+    st.caption(f"Ask naturally. Get examples. Practice immediately. · Level: {st.session_state.proficiency}")
     question = st.text_area("Your question", placeholder="Explain when to use the present simple in easy English...")
     if st.button("Ask Tutor", type="primary") and question.strip():
         with st.spinner("Your tutor is thinking..."):
-            show_ai_result(ai_tutor(question, source, target, retrieve_context(question)))
+            show_ai_result(ai_tutor(question, source, target, retrieve_context(question), level=st.session_state.proficiency))
 
 elif page == "Correct My English":
     st.title("✍️ Smart Correction")
@@ -408,17 +440,22 @@ elif page == "Vocabulary":
 
 elif page == "Grammar":
     st.title("🧠 Grammar Coach")
+    st.caption(f"Level: {st.session_state.proficiency}")
     topic = st.text_input("Grammar topic", "Present simple tense")
     if st.button("Explain grammar", type="primary"):
         with st.spinner("Preparing a simple explanation..."):
-            show_ai_result(ai_tutor(f"Teach {topic} with simple rules, examples, common mistakes and a mini exercise.", source, target, retrieve_context(topic)))
+            show_ai_result(ai_tutor(
+                f"Teach {topic} with simple rules, examples, common mistakes and a mini exercise.",
+                source, target, retrieve_context(topic), level=st.session_state.proficiency,
+            ))
 
 elif page == "Quiz & Tests":
     st.title("🧪 Quiz Lab")
+    st.caption(f"Level: {st.session_state.proficiency}")
     topic = st.text_input("Quiz topic", "Daily conversation")
     if st.button("Generate quiz", type="primary"):
         with st.spinner("Creating your quiz..."):
-            st.session_state.quiz = generate_quiz(source, target, topic)
+            st.session_state.quiz = generate_quiz(source, target, topic, level=st.session_state.proficiency)
     if "quiz" in st.session_state:
         show_ai_result(st.session_state.quiz)
         score = st.number_input("Your score (%)", 0, 100, st.session_state.quiz_score)
@@ -441,6 +478,14 @@ elif page == "Profile":
     st.title("👤 Profile & Preferences")
     name = st.text_input("Name", "TongueTie Learner")
     st.markdown(f'<div class="card"><h3>{name}</h3><p>Native: {name_of(source)}<br>Learning: {name_of(target)}</p></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">🎯 Proficiency level</div>', unsafe_allow_html=True)
+    st.caption("Drag to set your current level — the AI Tutor, Grammar Coach, Lessons and Quizzes all pitch content to this.")
+    st.session_state.proficiency = st.select_slider(
+        "Proficiency (CEFR)", options=PROFICIENCY_LEVELS,
+        value=st.session_state.proficiency, label_visibility="collapsed",
+    )
+
     st.toggle("Daily reminders", True, key="pref_reminders")
     st.toggle("Show pronunciation tips", True, key="pref_pronunciation")
     st.session_state.prefer_female = st.toggle("Prefer female voice when available", value=st.session_state.prefer_female, key="pref_female_voice")

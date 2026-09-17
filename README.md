@@ -8,7 +8,7 @@ and real voice recognition + transcription/TTS.
 
 ## Features
 
-- 130+ language-ready language selector (every populated continent, incl.
+- 250+ language selector (every populated continent, incl.
   Urdu, Arabic, Persian, Chinese, Hindi, Swahili, Quechua and more)
 - **Voice Translator**: real microphone recording → AI transcription →
   translation → correction → browser voice playback

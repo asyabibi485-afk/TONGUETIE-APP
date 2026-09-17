@@ -4,8 +4,18 @@ import re
 
 KB = Path(__file__).parent / "data" / "knowledge_base.txt"
 
+
 def retrieve_context(query, top_k=4):
-    text = KB.read_text(encoding="utf-8")
+    """Best-effort keyword retrieval over the local knowledge base.
+
+    Returns "" (never raises) if the knowledge-base file is missing, so a
+    missing/renamed data file degrades the AI Tutor's context instead of
+    crashing the whole page.
+    """
+    try:
+        text = KB.read_text(encoding="utf-8")
+    except (FileNotFoundError, OSError):
+        return ""
     chunks = [x.strip() for x in re.split(r"\n\s*\n", text) if x.strip()]
     terms = set(re.findall(r"\w+", query.lower()))
     scored = []
