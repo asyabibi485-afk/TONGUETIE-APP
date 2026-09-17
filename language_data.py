@@ -1,4 +1,3 @@
-
 # Broad multilingual language registry. Voice/TTS availability varies by provider.
 LANGUAGES = [
 ("English","en"),("Urdu","ur"),("Arabic","ar"),("Persian (Farsi)","fa"),
